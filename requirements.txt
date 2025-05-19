@@ -1,7 +1,21 @@
-streamlit
-pandas
-matplotlib
-seaborn
-scikit-learn
-xgboost
-lightgbm
+# Core UI and framework
+streamlit>=1.18.0
+
+# Data handling
+pandas>=1.3.0
+numpy>=1.21.0
+
+# Machine learning
+scikit-learn>=1.0.2
+xgboost>=1.5.0
+
+# Visualization
+matplotlib>=3.5.0
+seaborn>=0.11.2
+
+# Optional: Deep learning (LSTM, RNN support)
+tensorflow>=2.8.0
+keras>=2.8.0
+
+# Optional: Time-series utility
+statsmodels>=0.13.2
