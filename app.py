@@ -1,38 +1,51 @@
 import streamlit as st
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor  # Example model
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 
 # Set page title
 st.title("Air Quality Predictor")
 
-# Load the dataset (replace 'air_quality_data.csv' with your actual dataset file)
-# For this example, I’ll assume the dataset is in the same directory as the app
+# Load the dataset
 try:
-    df = pd.read_csv("air_quality_data.csv")
+    # Load the CSV file with semicolon separator and comma as decimal
+    df = pd.read_csv("airquality.csv", sep=";", decimal=",")
+    st.success("Dataset loaded successfully!")
 except FileNotFoundError:
-    st.error("Dataset file 'air_quality_data.csv' not found. Please upload the dataset.")
-    df = pd.DataFrame()  # Empty dataframe to avoid errors
+    st.error("Dataset file 'airquality.csv' not found. Please ensure the file is in the same directory as this script.")
+    df = pd.DataFrame()  # Empty DataFrame to prevent errors
+except Exception as e:
+    st.error(f"Error loading dataset: {e}")
+    df = pd.DataFrame()
 
-# Display the dataset
+# Proceed if dataset is loaded
 if not df.empty:
+    # Clean the dataset (remove extra empty columns if any)
+    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]  # Remove unnamed columns
+    df = df.iloc[:, :-2]  # Remove the last two empty columns (based on dataset structure)
+
+    # Replace missing values (-200) with NaN and drop rows with missing values
+    df.replace(-200, pd.NA, inplace=True)
+    df.dropna(inplace=True)
+
     st.write("### Dataset Preview")
     st.dataframe(df)
 
-    # Preprocess DateTime column if it exists
-    if "DateTime" in df.columns:
-        df["DateTime"] = pd.to_datetime(df["DateTime"])
+    # Preprocess DateTime column
+    if "Date" in df.columns and "Time" in df.columns:
+        # Combine Date and Time into a single DateTime column
+        df["DateTime"] = pd.to_datetime(df["Date"] + " " + df["Time"], format="%d/%m/%Y %H.%M.%S")
         df["Year"] = df["DateTime"].dt.year
         df["Month"] = df["DateTime"].dt.month
         df["Day"] = df["DateTime"].dt.day
         df["Hour"] = df["DateTime"].dt.hour
-        df = df.drop(columns=["DateTime"])  # Drop the original DateTime column
+        df = df.drop(columns=["Date", "Time", "DateTime"])  # Drop original columns
 
     # Feature and Target Selection
     st.write("### Select Features and Target")
 
-    # Get all columns except DateTime (already processed)
+    # Get all columns
     feature_options = df.columns.tolist()
 
     # Select input features
@@ -75,4 +88,4 @@ if not df.empty:
         st.write(f"R² Score: {r2_score(y_test, y_pred):.2f}")
 
 else:
-    st.write("No results to display. Please ensure the dataset is loaded correctly.")
+    st.write("No results to display. Please ensure the dataset file is loaded correctly.")
