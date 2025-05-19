@@ -1,69 +1,63 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import traceback
 import sys
 from xgboost import XGBRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
-import os
+import matplotlib.pyplot as plt
 
 def main():
+    st.set_page_config(page_title="Air Quality Predictor", layout="centered")
+    st.title("🌫️ Advanced Air Quality Predictor")
+
     try:
-        st.set_page_config(page_title="Air Quality Predictor", layout="centered")
-        st.title("🌫️ Advanced Air Quality Predictor with ML & Time-Series Support")
+        dataset_path = "AirQuality.csv"
+        df = pd.read_csv(dataset_path)
+        st.subheader("📄 Dataset Preview")
+        st.dataframe(df)
 
-        # Load dataset from file
-        st.header("📁 Dataset Overview")
-        dataset_path = "AirQuality.csv"  # Make sure this file exists in your directory
-        if os.path.exists(dataset_path):
-            df = pd.read_csv(dataset_path)
-            st.success(f"Loaded dataset: {dataset_path}")
-            st.dataframe(df)
+        if df.empty:
+            st.error("Dataset is empty.")
+            return
 
-            if not df.empty:
-                st.header("⚙️ Select Features and Target")
+        st.subheader("⚙️ Select Features and Target")
+        input_features = st.multiselect("Select input features", df.columns.tolist())
+        output_feature = st.selectbox("Select target feature to predict", [col for col in df.columns if col not in input_features])
 
-                # Select input features
-                input_features = st.multiselect(
-                    "Input features",
-                    options=df.columns.tolist(),
-                    help="Select features to be used for training."
-                )
+        if input_features and output_feature:
+            X = df[input_features]
+            y = df[output_feature]
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-                # Select target/output
-                output_feature = st.selectbox(
-                    "Output feature to predict",
-                    options=[col for col in df.columns if col not in input_features],
-                    help="Select the target column to predict."
-                )
+            model = XGBRegressor()
+            model.fit(X_train, y_train)
+            y_pred = model.predict(X_test)
+            rmse = mean_squared_error(y_test, y_pred, squared=False)
+            st.success(f"Model trained! RMSE: {rmse:.2f}")
 
-                if input_features and output_feature:
-                    st.subheader("📈 Train Model and View Results")
-                    if st.button("Train XGBoost Model"):
-                        try:
-                            X = df[input_features]
-                            y = df[output_feature]
-                            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+            st.subheader("🎯 Make a Prediction")
+            user_input = {}
+            for feature in input_features:
+                user_input[feature] = st.number_input(f"Enter value for {feature}", value=float(df[feature].mean()))
 
-                            model = XGBRegressor()
-                            model.fit(X_train, y_train)
-                            y_pred = model.predict(X_test)
-                            rmse = mean_squared_error(y_test, y_pred, squared=False)
+            if st.button("Predict"):
+                input_df = pd.DataFrame([user_input])
+                prediction = model.predict(input_df)[0]
+                st.success(f"Predicted {output_feature}: {prediction:.2f}")
 
-                            st.success(f"Model trained successfully! RMSE on test set: {rmse:.2f}")
-                        except Exception as model_err:
-                            st.error("🚨 Model training failed.")
-                            model_traceback = ''.join(traceback.format_exception(*sys.exc_info()))
-                            print("Model Training Error:\n", model_traceback)
-                            st.code(model_traceback)
-        else:
-            st.error(f"❌ Dataset file '{dataset_path}' not found. Please make sure it's in the app directory.")
+                # Visualization
+                st.subheader("📊 Prediction Visualization")
+                fig, ax = plt.subplots()
+                ax.barh([output_feature], [prediction], color='skyblue')
+                ax.set_xlabel("Predicted Value")
+                ax.set_title("Prediction Result")
+                st.pyplot(fig)
 
-    except Exception as e:
-        st.error("⚠️ An unexpected error occurred.")
-        error_traceback = ''.join(traceback.format_exception(*sys.exc_info()))
-        print("App Error:\n", error_traceback)
-        st.code(error_traceback)
+    except Exception:
+        st.error("An error occurred.")
+        st.code(''.join(traceback.format_exception(*sys.exc_info())))
 
 if __name__ == "__main__":
     main()
